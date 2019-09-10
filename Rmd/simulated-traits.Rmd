@@ -1,0 +1,41 @@
+---
+title: "Simulated traits"
+author: "Frederick Boehm"
+date: "9/10/2019"
+output: html_document
+---
+
+## Overview
+
+Is the null distribution of the pleiotropy test statistic a mixture of two chi-squared distributions?
+
+Let's simulate traits for DO mice under the null pleiotropy hypothesis. We'll then do the two-dimensional scans and determine the empirical null distribution of pleiotropy test statistics. For now, all traits will be simulated with the same covariance matrix.
+
+## Get the Attie DO data
+
+```{r saveRDS}
+if (!file.exists(here::here("data", "derived_data", "genoprobs.rds"))){
+  myurl <- "https://datadryad.org/bitstream/handle/10255/dryad.166774/Attie_DO378_eQTL_viewer_v1.Rdata?sequence=2"
+  download.file(myurl,
+              destfile = here::here("data", "raw_data", "Attie_DO378_eQTL_viewer_v1.Rdata")
+              )
+  load(here::here("data", "raw_data", "Attie_DO378_eQTL_viewer_v1.Rdata"))
+  saveRDS(dataset.islet.rnaseq$lod.peaks, here::here("data", "derived_data", "lod_peaks.rds"))
+  saveRDS(dataset.islet.rnaseq$annots, here::here("data", "derived_data", "annots.rds"))
+  saveRDS(dataset.islet.rnaseq$expr, here::here("data", "derived_data", "expr.rds"))
+  saveRDS(K, here::here("data", "derived_data", "kinship.rds"))
+  saveRDS(map, here::here("data", "derived_data", "map.rds"))
+  saveRDS(genoprobs, here::here("data", "derived_data", "genoprobs.rds"))
+  saveRDS(dataset.islet.rnaseq$covar, here::here("data", "derived_data", "covar.rds"))
+}
+```
+
+```{r readRDS}
+lod_peaks <- readRDS(here::here("analysis", "data", "derived_data", "lod_peaks.rds"))
+annots <- readRDS(here::here("analysis", "data", "derived_data", "annots.rds"))
+expr <- readRDS(here::here("analysis", "data", "derived_data", "expr.rds"))
+probs <- readRDS(here::here("analysis", "data", "derived_data", "genoprobs.rds"))
+K <- readRDS(here::here("analysis", "data", "derived_data", "kinship.rds"))
+covar <- readRDS(here::here("analysis", "data", "derived_data", "covar.rds"))
+map <- readRDS(here::here("analysis", "data", "derived_data", "map.rds"))
+```
