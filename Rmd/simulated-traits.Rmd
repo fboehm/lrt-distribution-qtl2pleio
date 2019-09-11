@@ -31,11 +31,90 @@ if (!file.exists(here::here("data", "derived_data", "genoprobs.rds"))){
 ```
 
 ```{r readRDS}
-lod_peaks <- readRDS(here::here("analysis", "data", "derived_data", "lod_peaks.rds"))
-annots <- readRDS(here::here("analysis", "data", "derived_data", "annots.rds"))
-expr <- readRDS(here::here("analysis", "data", "derived_data", "expr.rds"))
-probs <- readRDS(here::here("analysis", "data", "derived_data", "genoprobs.rds"))
-K <- readRDS(here::here("analysis", "data", "derived_data", "kinship.rds"))
-covar <- readRDS(here::here("analysis", "data", "derived_data", "covar.rds"))
-map <- readRDS(here::here("analysis", "data", "derived_data", "map.rds"))
+lod_peaks <- readRDS(here::here("data", "derived_data", "lod_peaks.rds"))
+annots <- readRDS(here::here("data", "derived_data", "annots.rds"))
+expr <- readRDS(here::here("data", "derived_data", "expr.rds"))
+probs <- readRDS(here::here("data", "derived_data", "genoprobs.rds"))
+K <- readRDS(here::here("data", "derived_data", "kinship.rds"))
+covar <- readRDS(here::here("data", "derived_data", "covar.rds"))
+map <- readRDS(here::here("data", "derived_data", "map.rds"))
+```
+
+## Simulate traits from Chr 1
+
+```{r load-qtl2pleio}
+library(qtl2pleio)
+library(qtl2)
+library(tidyverse)
+```
+
+```{r sims}
+K2 <- matrix(nrow = 500, ncol = 500, data = 0) %>%
+  (function(x) {rownames(x) <- rownames(K$`1`); colnames(x) <- colnames(K$`1`); x})
+set.seed(2019-09-10)
+out <- list()
+for (i in 1:1000){
+  tr <- sim1(X = gemma2::stagger_mats(genoprobs$`1`[ , , 1000], genoprobs$`1`[ , , 1000]),
+     B = matrix(data = rep(c(1, -1, 1, -1), each = 4),
+                nrow = 8, 
+                byrow = FALSE),
+     Vg = diag(2), 
+     Ve = diag(2), 
+     kinship = K2 # assume unrelated subjects
+  )
+  tr_mat <- matrix(data = tr, byrow = FALSE, ncol = 2)
+  # add rownames and colnames
+  rownames(tr_mat) <- rownames(genoprobs$`1`)
+  colnames(tr_mat) <- paste0("tr", c(1, 2))
+  out[[i]] <- tr_mat
+}
+```
+
+
+
+
+
+
+
+```{r scan_pvl}
+sp_out <- lapply(FUN = function(x) {
+  qtl2pleio::scan_pvl(probs = probs$`1`,
+                    pheno = x[1:100, ], 
+                    kinship = K$`1`,
+                    start_snp = 900, 
+                    n_snp = 200)},
+  X = out)
+```
+
+```{r}
+sp_out %>%
+  calc_profile_lods() %>%
+  add_pmap(pmap = map$`1`) %>%
+  ggplot() + geom_line(aes(y = profile_lod, x = marker_position, colour = trait))
+```
+
+```{r calc_lrt}
+lods <- sp_out %>%
+  purrr::map(.f = calc_profile_lods) %>%
+  purrr::map(.f = dplyr::filter, profile_lod == max(profile_lod)) %>%
+  purrr::map(.f = dplyr::select, profile_lod) %>%
+  purrr::map_dbl(.f = function(x)x[[1]][1])
+hist(lods)
+```
+
+```{r chisq-1-2-mixture}
+mix_prob <- 0.5
+rout <- numeric(length = 1000L)
+for (i in seq_along(rout)){
+  if (rbinom(n = 1, size = 1, prob = mix_prob)) {
+    rout[i] <- rchisq(n = 1, df = 1)
+    } else {
+      rout[i] <- rchisq(n = 1, df = 2)
+      }
+}
+hist(rout)
+```
+
+```{r qq}
+qqplot(rout, lods)
 ```
